@@ -1,0 +1,11 @@
+name: simple-music-uploader
+
+services:
+    app:
+        build: .
+        restart: always
+        user: 1000:1000
+        volumes:
+            - ./music:/data/music
+        ports:
+            - "5062:8000"

@@ -12,7 +12,7 @@ app = FastAPI()
 
 # 1. 配置路径
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MUSIC_FOLDER = os.path.join(BASE_DIR, 'music')
+MUSIC_FOLDER = os.path.join('/data/music')
 STATIC_FOLDER = os.path.join(BASE_DIR, 'static')
 TEMPLATES_FOLDER = os.path.join(BASE_DIR, 'templates')
 
