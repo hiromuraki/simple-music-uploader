@@ -11,3 +11,6 @@ wheels/
 
 # MusicLibrary
 music/
+
+# Docker env
+.env
