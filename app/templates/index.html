@@ -12,457 +12,189 @@
             rel="stylesheet"
         />
 
+        <script src="/static/js/tailwindcss.js"></script>
+        <script>
+            tailwind.config = {
+                theme: {
+                    extend: {
+                        fontFamily: {
+                            sans: ["Inter", "sans-serif"],
+                            mono: ["JetBrains Mono", "monospace"],
+                        },
+                        colors: { primary: "#6366f1", success: "#10b981", surface: "#ffffff" },
+                    },
+                },
+            };
+        </script>
+
         <script src="/static/js/spark-md5.min.js"></script>
         <script src="/static/js/jsmediatags.min.js"></script>
         <script src="/static/js/ffmpeg.js"></script>
         <script src="/static/js/ffmpeg-util.js"></script>
 
         <style>
-            :root {
-                --primary: #6366f1;
-                --primary-bg: #e0e7ff;
-                --surface: #ffffff;
-                --background: #f8fafc;
-                --text-main: #1e293b;
-                --text-sub: #64748b;
-                --border: #e2e8f0;
-                --success: #10b981;
+            /* 自定义滚动条 */
+            ::-webkit-scrollbar {
+                width: 6px;
+                height: 6px;
             }
-
-            * {
-                box-sizing: border-box;
-                outline: none;
+            ::-webkit-scrollbar-track {
+                background: transparent;
             }
-
-            body {
-                margin: 0;
-                font-family: "Inter", system-ui, sans-serif;
-                height: 100vh;
-                display: flex;
-                background-color: var(--background);
-                color: var(--text-main);
-                overflow: hidden;
+            ::-webkit-scrollbar-thumb {
+                background: #cbd5e1;
+                border-radius: 3px;
             }
-
-            /* --- 左侧边栏 --- */
-            .sidebar {
-                width: 320px;
-                background: var(--surface);
-                border-right: 1px solid var(--border);
-                padding: 24px;
-                display: flex;
-                flex-direction: column;
-                gap: 20px;
-                flex-shrink: 0;
-                z-index: 10;
-            }
-
-            .brand {
-                font-size: 1.1rem;
-                font-weight: 700;
-                display: flex;
-                align-items: center;
-                gap: 8px;
-                padding-bottom: 12px;
-                border-bottom: 1px solid var(--border);
-            }
-
-            .upload-area {
-                border: 2px dashed #cbd5e1;
-                border-radius: 12px;
-                padding: 30px 15px;
-                text-align: center;
-                background: #f1f5f9;
-                transition: 0.2s;
-                cursor: pointer;
-            }
-            .upload-area:hover {
-                border-color: var(--primary);
-                background: #eef2ff;
-            }
-            .upload-area.disabled {
-                opacity: 0.6;
-                cursor: not-allowed;
-                filter: grayscale(1);
-            }
-
-            .btn-main {
-                background: var(--primary);
-                color: white;
-                border: none;
-                padding: 12px;
-                border-radius: 8px;
-                font-weight: 600;
-                cursor: pointer;
-                width: 100%;
-                transition: 0.2s;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                gap: 8px;
-            }
-            .btn-main:hover {
-                background: #4f46e5;
-            }
-            .btn-main:disabled {
+            ::-webkit-scrollbar-thumb:hover {
                 background: #94a3b8;
-                cursor: not-allowed;
             }
 
-            .terminal {
-                flex: 1;
-                background: #0f172a;
-                color: #22d3ee;
-                padding: 12px;
-                border-radius: 8px;
-                font-family: "JetBrains Mono", monospace;
-                font-size: 11px;
-                line-height: 1.5;
-                overflow-y: auto;
-            }
-
-            /* --- 右侧主内容 --- */
-            .main {
-                flex: 1;
-                display: flex;
-                flex-direction: column;
-                overflow: hidden;
-            }
-
-            .header {
-                padding: 16px 32px;
-                background: rgba(255, 255, 255, 0.85);
-                backdrop-filter: blur(8px);
-                border-bottom: 1px solid var(--border);
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                z-index: 5;
-            }
-
-            /* 新的排序切换控件 (Segmented Control) */
-            .sort-control {
-                display: flex;
-                background: #f1f5f9;
-                padding: 4px;
-                border-radius: 8px;
-                gap: 2px;
-            }
-            .sort-tab {
-                padding: 6px 12px;
-                border-radius: 6px;
-                font-size: 13px;
-                color: var(--text-sub);
-                cursor: pointer;
-                transition: all 0.2s;
-                display: flex;
-                align-items: center;
-                gap: 4px;
-                font-weight: 500;
-            }
-            .sort-tab:hover {
-                color: var(--text-main);
-            }
-            .sort-tab.active {
-                background: white;
-                color: var(--primary);
-                box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-            }
-
-            .btn-refresh {
-                margin-left: 12px;
-                padding: 8px;
-                border-radius: 8px;
-                border: 1px solid var(--border);
-                background: white;
-                cursor: pointer;
-                color: var(--text-sub);
-                display: flex;
-                align-items: center;
-                transition: all 0.2s;
-            }
-            .btn-refresh:hover {
-                border-color: var(--primary);
-                color: var(--primary);
-            }
-
-            .list-container {
-                flex: 1;
-                overflow-y: auto;
-                padding: 24px 32px;
-                display: grid;
-                grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-                gap: 16px;
-                align-content: start;
-            }
-
-            /* --- 卡片样式 --- */
-            .track-card {
-                background: var(--surface);
-                border: 1px solid var(--border);
-                border-radius: 12px;
-                padding: 12px;
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                transition: all 0.2s ease;
-                position: relative;
-            }
-            .track-card:hover {
-                border-color: #c7d2fe;
-                box-shadow:
-                    0 4px 6px -1px rgba(0, 0, 0, 0.1),
-                    0 2px 4px -1px rgba(0, 0, 0, 0.06);
-                transform: translateY(-2px);
-            }
-
-            .track-cover {
-                width: 72px;
-                height: 72px;
-                border-radius: 8px;
-                background: #f1f5f9;
-                object-fit: cover;
-                flex-shrink: 0;
-                border: 1px solid #f1f5f9;
-            }
-            .track-cover.placeholder {
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 24px;
-                color: #cbd5e1;
-            }
-
-            .track-info {
-                flex: 1;
-                min-width: 0;
-                display: flex;
-                flex-direction: column;
-                justify-content: center;
-                gap: 6px;
-            }
-
-            .clickable-text {
-                cursor: pointer;
-                transition: color 0.2s;
-                position: relative;
-                width: fit-content;
-                max-width: 100%;
-            }
-            .clickable-text:hover {
-                color: var(--primary);
-                text-decoration-line: underline;
-                text-decoration-thickness: 2px;
-                text-decoration-color: rgba(99, 102, 241, 0.2);
-            }
-            .clickable-text:active {
-                opacity: 0.7;
-            }
-
-            .track-name {
-                font-weight: 600;
-                font-size: 14px;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                color: var(--text-main);
-                display: block;
-            }
-
-            .meta-row {
-                display: flex;
-                align-items: center;
-                gap: 10px;
-                font-size: 12px;
-                color: var(--text-sub);
-            }
-
-            .pill {
-                background: #f8fafc;
-                border: 1px solid #e2e8f0;
-                padding: 2px 6px;
-                border-radius: 4px;
-                display: flex;
-                align-items: center;
-                gap: 4px;
-            }
-
-            .btn-link {
-                background: white;
-                border: 1px solid var(--border);
-                color: var(--text-sub);
-                width: 32px;
-                height: 32px;
-                border-radius: 8px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                cursor: pointer;
-                transition: all 0.2s;
-                flex-shrink: 0;
-            }
-            .btn-link:hover {
-                border-color: var(--primary);
-                color: var(--primary);
-                background: #eef2ff;
-            }
-
-            /* --- Toast 顶部提示 --- */
-            .toast-container {
-                position: fixed;
-                top: 24px;
-                left: 50%;
-                transform: translateX(-50%) translateY(-100px);
-                background: #1e293b;
-                color: white;
-                padding: 10px 20px;
-                border-radius: 99px;
-                font-size: 13px;
-                font-weight: 500;
-                box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
-                display: flex;
-                align-items: center;
-                gap: 8px;
+            /* Toast 动画 */
+            .toast-enter {
+                transform: translateX(-50%) translateY(-100%);
                 opacity: 0;
-                transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-                z-index: 1000;
-                pointer-events: none;
             }
-            .toast-container.show {
-                transform: translateX(-50%) translateY(0);
+            .toast-active {
+                transform: translateX(-50%) translateY(24px);
                 opacity: 1;
-            }
-            .toast-icon {
-                color: var(--success);
-                display: flex;
-                align-items: center;
-            }
-
-            /* 定义禁用状态：半透明 + 禁止鼠标事件 */
-            .disabled-zone {
-                opacity: 0.5;
-                pointer-events: none; /* 关键：禁止点击和拖拽 */
-                cursor: not-allowed;
-                filter: grayscale(100%);
-            }
-
-            /* 加载动画 */
-            @keyframes spin {
-                100% {
-                    transform: rotate(360deg);
-                }
-            }
-            .loading-spinner {
-                display: inline-block;
-                width: 16px;
-                height: 16px;
-                border: 2px solid #cbd5e1;
-                border-top-color: var(--primary);
-                border-radius: 50%;
-                animation: spin 0.8s linear infinite;
-                margin-right: 6px;
-                vertical-align: middle;
             }
         </style>
     </head>
-    <body>
-        <div id="toast" class="toast-container">
-            <div class="toast-icon">
-                <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="18"
-                    height="18"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="3"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                >
-                    <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
-            </div>
+    <body
+        class="bg-slate-50 text-slate-800 h-screen flex overflow-hidden selection:bg-indigo-100 selection:text-indigo-700"
+    >
+        <div
+            id="toast"
+            class="fixed left-1/2 top-0 z-50 flex items-center gap-2 px-5 py-2.5 bg-slate-800 text-white text-sm font-medium rounded-full shadow-lg transition-all duration-500 ease-out toast-enter pointer-events-none"
+        >
+            <svg
+                class="w-4 h-4 text-success"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                stroke-width="3"
+            >
+                <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
             <span id="toastMsg">已复制</span>
         </div>
 
-        <div class="sidebar">
-            <div class="brand">⚡ Batch Uploader</div>
+        <aside
+            class="w-80 bg-white border-r border-slate-200 flex flex-col p-6 gap-5 shrink-0 z-10 shadow-sm"
+        >
+            <div
+                class="flex items-center gap-2 pb-4 border-b border-slate-100 text-lg font-bold text-slate-900"
+            >
+                <span>⚡</span> Batch Uploader
+            </div>
 
             <div
-                class="upload-area disabled-zone"
                 id="dropZone"
                 onclick="document.getElementById('fileInput').click()"
+                class="relative group border-2 border-dashed border-slate-300 rounded-xl p-8 text-center bg-slate-50 transition-all duration-200 opacity-60 pointer-events-none cursor-not-allowed grayscale"
             >
                 <input
                     type="file"
                     id="fileInput"
                     accept="audio/*"
                     multiple
-                    style="display: none"
+                    class="hidden"
                     onchange="handleFileSelect()"
                 />
-                <div style="font-size: 24px; margin-bottom: 8px">📂</div>
-                <div id="dropZoneText" style="font-weight: 500; font-size: 14px">
-                    <div class="loading-spinner"></div>
-                    系统初始化中...
+
+                <div class="text-3xl mb-3 group-hover:scale-110 transition-transform duration-200">
+                    📂
                 </div>
-                <div style="font-size: 12px; color: var(--text-sub); margin-top: 4px">
-                    支持批量排队处理
+
+                <div
+                    id="dropZoneTitle"
+                    class="font-medium text-sm text-slate-700 flex justify-center items-center gap-2"
+                >
+                    <svg
+                        class="animate-spin h-4 w-4 text-primary"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                    >
+                        <circle
+                            class="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            stroke-width="4"
+                        ></circle>
+                        <path
+                            class="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
+                    </svg>
+                    正在加载本地核心...
                 </div>
+
+                <div id="dropZoneSub" class="text-xs text-slate-400 mt-1">请稍候</div>
             </div>
 
             <div
                 id="queueInfo"
-                style="
-                    display: none;
-                    font-size: 12px;
-                    color: var(--text-sub);
-                    background: #f1f5f9;
-                    padding: 10px;
-                    border-radius: 8px;
-                "
+                class="hidden text-xs text-slate-500 bg-slate-100 p-3 rounded-lg border border-slate-200"
             >
-                待处理: <strong id="queueCount">0</strong> 个文件
+                待处理: <strong id="queueCount" class="text-slate-800">0</strong> 个文件
             </div>
 
-            <button id="uploadBtn" class="btn-main" onclick="startBatchUpload()" disabled>
-                🚀 等待组件加载
+            <button
+                id="uploadBtn"
+                onclick="startBatchUpload()"
+                disabled
+                class="w-full py-3 px-4 bg-primary hover:bg-indigo-600 disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg transition-colors flex justify-center items-center gap-2 shadow-sm"
+            >
+                🚀 等待组件就绪
             </button>
 
-            <div id="statusLog" class="terminal">
-                <div>> 系统启动...</div>
+            <div
+                id="statusLog"
+                class="flex-1 bg-slate-900 text-cyan-300 p-3 rounded-lg font-mono text-[11px] leading-relaxed overflow-y-auto border border-slate-800 shadow-inner"
+            >
+                <div class="opacity-50">> 系统启动中 (Local Mode)...</div>
             </div>
-        </div>
+        </aside>
 
-        <div class="main">
-            <div class="header">
-                <div style="font-weight: 600">资源列表</div>
+        <main class="flex-1 flex flex-col min-w-0 bg-slate-50/50">
+            <header
+                class="h-16 px-8 flex items-center justify-between bg-white/80 backdrop-blur border-b border-slate-200 sticky top-0 z-10"
+            >
+                <h1 class="font-semibold text-slate-800">资源列表</h1>
 
-                <div style="display: flex; align-items: center">
-                    <div class="sort-control">
-                        <div
+                <div class="flex items-center gap-3">
+                    <div class="flex bg-slate-100 p-1 rounded-lg gap-1">
+                        <button
                             id="sortTime"
-                            class="sort-tab active"
                             onclick="changeSort('time_desc')"
+                            class="px-3 py-1.5 text-xs font-medium rounded-md transition-all text-primary bg-white shadow-sm ring-1 ring-black/5"
                         >
                             🕒 最新
-                        </div>
-                        <div id="sortName" class="sort-tab" onclick="changeSort('name_asc')">
+                        </button>
+                        <button
+                            id="sortName"
+                            onclick="changeSort('name_asc')"
+                            class="px-3 py-1.5 text-xs font-medium rounded-md transition-all text-slate-500 hover:text-slate-700"
+                        >
                             🔤 名称
-                        </div>
+                        </button>
                     </div>
 
-                    <button class="btn-refresh" onclick="fetchList()" title="刷新列表">
+                    <button
+                        onclick="fetchList()"
+                        class="p-2 text-slate-400 hover:text-primary hover:bg-indigo-50 rounded-lg transition-colors border border-transparent hover:border-indigo-100"
+                        title="刷新列表"
+                    >
                         <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="16"
-                            height="16"
-                            viewBox="0 0 24 24"
+                            class="w-4 h-4"
                             fill="none"
                             stroke="currentColor"
+                            viewBox="0 0 24 24"
                             stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
                         >
                             <path d="M23 4v6h-6"></path>
                             <path d="M1 20v-6h6"></path>
@@ -472,137 +204,107 @@
                         </svg>
                     </button>
                 </div>
-            </div>
+            </header>
 
-            <div id="musicListContainer" class="list-container"></div>
-        </div>
+            <div
+                id="musicListContainer"
+                class="flex-1 overflow-y-auto p-8 grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-4 content-start"
+            ></div>
+        </main>
 
         <script>
             const Icons = {
-                link: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`,
+                link: `<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`,
             };
+        </script>
 
+        <script>
             const { FFmpeg } = FFmpegWASM;
             const { fetchFile } = FFmpegUtil;
             let ffmpeg = null;
             let fileQueue = [];
             let isProcessing = false;
             let musicDataList = [];
-
-            // 全局排序状态
             let currentSortMode = "time_desc";
 
             const logEl = document.getElementById("statusLog");
             const uploadBtn = document.getElementById("uploadBtn");
+            const dropZone = document.getElementById("dropZone");
+            const dropZoneTitle = document.getElementById("dropZoneTitle");
+            const dropZoneSub = document.getElementById("dropZoneSub");
 
             function log(msg, type = "info") {
                 const div = document.createElement("div");
                 div.textContent = `> ${msg}`;
-                if (type === "success") div.style.color = "var(--success)";
-                if (type === "error") div.style.color = "#ef4444";
+                div.className = "mb-1";
+                if (type === "success") div.className += " text-emerald-400";
+                if (type === "error") div.className += " text-rose-400";
                 logEl.appendChild(div);
                 logEl.scrollTop = logEl.scrollHeight;
             }
 
-            // --- Toast 逻辑 ---
-            let toastTimeout;
-            function showToast(text) {
-                const toast = document.getElementById("toast");
-                const msg = document.getElementById("toastMsg");
-
-                if (text.length > 20) text = text.substring(0, 20) + "...";
-                msg.textContent = `已复制: ${text}`;
-                toast.classList.add("show");
-
-                clearTimeout(toastTimeout);
-                toastTimeout = setTimeout(() => {
-                    toast.classList.remove("show");
-                }, 2000);
-            }
-
-            // --- 排序切换逻辑 ---
-            function changeSort(mode) {
-                if (currentSortMode === mode) return;
-                currentSortMode = mode;
-
-                // 更新 UI 状态
-                document
-                    .getElementById("sortTime")
-                    .classList.toggle("active", mode === "time_desc");
-                document.getElementById("sortName").classList.toggle("active", mode === "name_asc");
-
-                renderList();
-            }
-
-            // --- 工具函数 ---
-            function compressImage(base64Str) {
-                return new Promise((resolve) => {
-                    const img = new Image();
-                    img.onload = () => {
-                        const canvas = document.createElement("canvas");
-                        canvas.width = 256;
-                        canvas.height = 256;
-                        const ctx = canvas.getContext("2d");
-                        ctx.drawImage(img, 0, 0, 256, 256);
-                        resolve(canvas.toDataURL("image/jpeg", 0.8));
-                    };
-                    img.onerror = () => resolve(base64Str);
-                    img.src = base64Str;
-                });
-            }
-
-            // --- 3. 修改：初始化函数增加 UI 状态控制 ---
+            // --- 1. 初始化 FFmpeg ---
             async function initFFmpeg() {
-                const dropZone = document.getElementById("dropZone");
-                const dropText = document.getElementById("dropZoneText");
-                const btn = document.getElementById("uploadBtn");
-
                 ffmpeg = new FFmpeg();
                 ffmpeg.on("log", ({ message }) => {
                     if (!message.includes("size=") && !message.includes("time="))
                         console.log(message);
                 });
+
                 try {
+                    // 本地加载
                     await ffmpeg.load({
                         coreURL: "/static/js/ffmpeg-core.js",
                         wasmURL: "/static/js/ffmpeg-core.wasm",
                     });
 
-                    log("系统就绪 (内核已加载)", "success");
+                    log("本地 FFmpeg 内核加载完毕", "success");
 
-                    // --- 核心加载成功，解锁 UI ---
-                    dropZone.classList.remove("disabled-zone");
-                    dropText.innerHTML = "点击或拖拽文件";
-                    btn.textContent = "🚀 开始处理";
+                    // 解锁界面
+                    dropZone.classList.remove(
+                        "opacity-60",
+                        "pointer-events-none",
+                        "cursor-not-allowed",
+                        "grayscale",
+                    );
+                    dropZone.classList.add(
+                        "cursor-pointer",
+                        "hover:border-primary",
+                        "hover:bg-indigo-50",
+                    );
+
+                    dropZoneTitle.innerHTML = "点击或拖拽文件";
+                    dropZoneSub.textContent = "支持批量排队处理";
+
+                    uploadBtn.textContent = "🚀 开始处理";
                 } catch (e) {
-                    log("FFmpeg 加载失败", "error");
+                    log("FFmpeg 加载失败 (请检查 static/js 目录)", "error");
                     console.error(e);
-                    // 失败状态提示
-                    if (dropText) {
-                        dropText.innerHTML =
-                            '<span style="color:#ef4444">❌ 组件加载失败，请刷新</span>';
-                    }
+                    dropZoneTitle.innerHTML = '<span class="text-rose-500">组件加载失败</span>';
+                    dropZoneSub.textContent = "无法加载 WASM 或 JS 文件";
                 }
             }
 
+            // --- 2. 交互逻辑 ---
             function handleFileSelect() {
                 const input = document.getElementById("fileInput");
                 if (input.files.length) {
                     fileQueue = Array.from(input.files);
                     document.getElementById("queueCount").textContent = fileQueue.length;
-                    document.getElementById("queueInfo").style.display = "block";
+                    document.getElementById("queueInfo").classList.remove("hidden");
+
                     if (ffmpeg && fileQueue.length > 0) uploadBtn.disabled = false;
                 }
             }
 
-            // --- 批量处理逻辑 ---
             async function startBatchUpload() {
                 if (isProcessing || fileQueue.length === 0 || !ffmpeg) return;
+
                 isProcessing = true;
                 uploadBtn.disabled = true;
-                document.getElementById("dropZone").classList.add("disabled");
+                dropZone.classList.add("opacity-60", "pointer-events-none");
 
-                log(`开始处理 ${fileQueue.length} 个文件...`);
+                log(`开始队列: ${fileQueue.length} 个文件...`);
 
                 for (let i = 0; i < fileQueue.length; i++) {
                     const file = fileQueue[i];
@@ -613,12 +315,13 @@
                         log(`❌ ${file.name} 失败`, "error");
                     }
                 }
-                log("所有任务完成", "success");
+                log("队列任务全部完成", "success");
+
                 isProcessing = false;
                 fileQueue = [];
                 document.getElementById("fileInput").value = "";
-                document.getElementById("queueInfo").style.display = "none";
-                document.getElementById("dropZone").classList.remove("disabled");
+                document.getElementById("queueInfo").classList.add("hidden");
+                dropZone.classList.remove("opacity-60", "pointer-events-none");
                 fetchList();
             }
 
@@ -627,6 +330,7 @@
                     getCoverArt(file),
                     getDuration(file),
                 ]);
+
                 const inputName = "input_audio";
                 const outputName = "output.mp3";
                 try {
@@ -635,61 +339,77 @@
                 try {
                     await ffmpeg.deleteFile(outputName);
                 } catch (e) {}
+
                 await ffmpeg.writeFile(inputName, await fetchFile(file));
                 await ffmpeg.exec(["-i", inputName, "-b:a", "192k", outputName]);
+
                 const data = await ffmpeg.readFile(outputName);
                 const mp3Blob = new Blob([data.buffer], { type: "audio/mp3" });
+
                 const fullHash = await calculateMD5(mp3Blob);
                 const shortHash = fullHash.substring(0, 16);
                 const finalFilename = `${shortHash}.mp3`;
+
                 const metadata = {
                     original_name: file.name,
                     duration: duration,
                     cover_base64: coverBase64 || "",
                 };
+
                 const formData = new FormData();
                 formData.append("audio", mp3Blob, finalFilename);
                 formData.append("metadata", JSON.stringify(metadata));
+
                 const res = await fetch("/upload", { method: "POST", body: formData });
-                if (!res.ok) throw new Error("Upload failed");
+                if (!res.ok) throw new Error("服务器返回错误");
+
                 await ffmpeg.deleteFile(inputName);
                 await ffmpeg.deleteFile(outputName);
             }
 
-            // 辅助函数
+            // --- 辅助工具 ---
             function getCoverArt(file) {
                 return new Promise((resolve) => {
                     jsmediatags.read(file, {
                         onSuccess: async function (tag) {
                             const { picture } = tag.tags;
                             if (picture) {
-                                let base64String = "";
-                                for (let i = 0; i < picture.data.length; i++) {
-                                    base64String += String.fromCharCode(picture.data[i]);
-                                }
-                                const rawBase64 =
-                                    "data:" +
-                                    picture.format +
-                                    ";base64," +
-                                    window.btoa(base64String);
-                                resolve(await compressImage(rawBase64));
-                            } else {
-                                resolve(null);
-                            }
+                                let str = "";
+                                for (let i = 0; i < picture.data.length; i++)
+                                    str += String.fromCharCode(picture.data[i]);
+                                const raw =
+                                    "data:" + picture.format + ";base64," + window.btoa(str);
+                                resolve(await compressImage(raw));
+                            } else resolve(null);
                         },
                         onError: () => resolve(null),
                     });
                 });
             }
-            function getDuration(file) {
+
+            function compressImage(base64Str) {
                 return new Promise((resolve) => {
-                    const audio = new Audio(URL.createObjectURL(file));
-                    audio.addEventListener("loadedmetadata", () =>
-                        resolve(Math.round(audio.duration)),
-                    );
-                    audio.onerror = () => resolve(0);
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement("canvas");
+                        canvas.width = 256;
+                        canvas.height = 256;
+                        canvas.getContext("2d").drawImage(img, 0, 0, 256, 256);
+                        resolve(canvas.toDataURL("image/jpeg", 0.8));
+                    };
+                    img.onerror = () => resolve(base64Str);
+                    img.src = base64Str;
                 });
             }
+
+            function getDuration(file) {
+                return new Promise((r) => {
+                    const a = new Audio(URL.createObjectURL(file));
+                    a.onloadedmetadata = () => r(Math.round(a.duration));
+                    a.onerror = () => r(0);
+                });
+            }
+
             function calculateMD5(blob) {
                 return new Promise((resolve, reject) => {
                     const reader = new FileReader();
@@ -714,11 +434,28 @@
                 }
             }
 
+            function changeSort(mode) {
+                if (currentSortMode === mode) return;
+                currentSortMode = mode;
+                const btnTime = document.getElementById("sortTime");
+                const btnName = document.getElementById("sortName");
+                const activeClass = "text-primary bg-white shadow-sm ring-1 ring-black/5";
+                const inactiveClass = "text-slate-500 hover:text-slate-700";
+
+                if (mode === "time_desc") {
+                    btnTime.className = `px-3 py-1.5 text-xs font-medium rounded-md transition-all ${activeClass}`;
+                    btnName.className = `px-3 py-1.5 text-xs font-medium rounded-md transition-all ${inactiveClass}`;
+                } else {
+                    btnTime.className = `px-3 py-1.5 text-xs font-medium rounded-md transition-all ${inactiveClass}`;
+                    btnName.className = `px-3 py-1.5 text-xs font-medium rounded-md transition-all ${activeClass}`;
+                }
+                renderList();
+            }
+
             function renderList() {
                 const container = document.getElementById("musicListContainer");
                 const list = [...musicDataList];
 
-                // 使用全局变量 currentSortMode
                 list.sort((a, b) => {
                     if (currentSortMode === "time_desc") return b.upload_time - a.upload_time;
                     if (currentSortMode === "name_asc")
@@ -727,7 +464,7 @@
                 });
 
                 if (list.length === 0) {
-                    container.innerHTML = `<div style="grid-column:1/-1; text-align:center; color:#94a3b8; padding-top:40px;">暂无文件</div>`;
+                    container.innerHTML = `<div class="col-span-full text-center pt-10 text-slate-400">暂无文件，请在左侧上传</div>`;
                     return;
                 }
 
@@ -735,66 +472,81 @@
                     .map((item) => {
                         const url = `${window.location.origin}/resources/music/${item.filename}`;
                         const cover = item.cover_base64
-                            ? `<img src="${item.cover_base64}" class="track-cover">`
-                            : `<div class="track-cover placeholder">🎵</div>`;
+                            ? `<img src="${item.cover_base64}" class="w-[72px] h-[72px] rounded-lg bg-slate-200 object-cover shrink-0 border border-slate-100">`
+                            : `<div class="w-[72px] h-[72px] rounded-lg bg-slate-100 flex items-center justify-center text-2xl text-slate-300 shrink-0 border border-slate-100">🎵</div>`;
 
                         const min = Math.floor(item.duration / 60);
                         const sec = (item.duration % 60).toString().padStart(2, "0");
-                        const displayTime = `${min}:${sec}`;
 
                         return `
-                <div class="track-card">
-                    ${cover}
-                    <div class="track-info">
-                        <div class="clickable-text track-name" 
-                             title="复制: ${item.original_name}" 
-                             onclick="copyText('${item.original_name}', this)">
-                            ${item.original_name}
+                    <div class="group relative bg-white border border-slate-200 rounded-xl p-3 flex items-center gap-3 transition-all hover:border-indigo-200 hover:shadow-md hover:-translate-y-0.5">
+                        ${cover}
+                        <div class="flex-1 min-w-0 flex flex-col justify-center gap-1.5">
+                            <div class="font-semibold text-sm text-slate-800 truncate cursor-pointer hover:text-primary hover:underline decoration-indigo-200 decoration-2"
+                                 title="复制: ${item.original_name}" 
+                                 onclick="copyText('${item.original_name}', this)">
+                                ${item.original_name}
+                            </div>
+                            
+                            <div class="flex items-center gap-2 text-xs text-slate-500">
+                                <div class="bg-slate-50 border border-slate-100 px-1.5 py-0.5 rounded cursor-pointer hover:text-primary hover:border-indigo-100"
+                                     title="复制秒数: ${item.duration}" 
+                                     onclick="copyText('${item.duration}', this)">
+                                    时长 ${min}:${sec}
+                                </div>
+                                <div class="font-mono text-slate-400 bg-slate-50 border border-slate-100 px-1.5 py-0.5 rounded">
+                                    ${item.id.substring(0, 6)}
+                                </div>
+                            </div>
                         </div>
                         
-                        <div class="meta-row">
-                            <div class="clickable-text pill" 
-                                 title="复制时长 (秒): ${item.duration}" 
-                                 onclick="copyText('${item.duration}', this)">
-                                <span>时长 ${displayTime}</span>
-                            </div>
-                            <div class="pill" style="font-family:monospace; color:#94a3b8">
-                                ${item.id.substring(0, 6)}
-                            </div>
-                        </div>
+                        <button onclick="copyText('${url}', this)" 
+                                class="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:text-primary hover:bg-indigo-50 hover:border-indigo-200 transition-colors shrink-0"
+                                title="复制下载链接">
+                            ${Icons.link}
+                        </button>
                     </div>
-                    
-                    <button class="btn-link" onclick="copyText('${url}', this)" title="复制下载链接">
-                        ${Icons.link}
-                    </button>
-                </div>
-            `;
+                `;
                     })
                     .join("");
             }
 
+            // --- Toast & Copy ---
+            let toastTimeout;
             async function copyText(text, el) {
                 try {
                     await navigator.clipboard.writeText(text);
-                    showToast(text); // 触发顶部提示
 
-                    if (el.classList.contains("clickable-text")) {
-                        const originalColor = el.style.color;
-                        el.style.color = "var(--success)";
+                    const toast = document.getElementById("toast");
+                    const msg = document.getElementById("toastMsg");
+                    if (text.length > 20) text = text.substring(0, 15) + "...";
+                    msg.textContent = `已复制: ${text}`;
+
+                    toast.classList.remove("toast-enter");
+                    toast.classList.add("toast-active");
+
+                    clearTimeout(toastTimeout);
+                    toastTimeout = setTimeout(() => {
+                        toast.classList.remove("toast-active");
+                        toast.classList.add("toast-enter");
+                    }, 2000);
+
+                    if (el.tagName === "BUTTON") {
+                        const originalClass = el.className;
+                        el.className =
+                            "w-8 h-8 flex items-center justify-center rounded-lg border border-emerald-200 text-emerald-500 bg-emerald-50 shrink-0 transition-all";
+                        el.innerHTML = "✔";
                         setTimeout(() => {
-                            el.style.color = originalColor;
-                        }, 300);
-                    } else if (el.tagName === "BUTTON") {
-                        const originalColor = el.style.color;
-                        el.style.color = "var(--success)";
-                        el.style.borderColor = "var(--success)";
-                        setTimeout(() => {
-                            el.style.color = "";
-                            el.style.borderColor = "";
-                        }, 300);
+                            el.className = originalClass;
+                            el.innerHTML = Icons.link;
+                        }, 600);
+                    } else {
+                        const oldColor = el.style.color;
+                        el.style.color = "#10b981";
+                        setTimeout(() => (el.style.color = oldColor), 400);
                     }
                 } catch (err) {
-                    console.error("复制失败", err);
+                    console.error(err);
                 }
             }
 
