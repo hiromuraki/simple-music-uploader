@@ -1,0 +1,763 @@
+<!doctype html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Web Music Archive</title>
+
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+            rel="stylesheet"
+        />
+
+        <script src="/static/js/spark-md5.min.js"></script>
+        <script src="/static/js/jsmediatags.min.js"></script>
+        <script src="/static/js/ffmpeg.js"></script>
+        <script src="/static/js/ffmpeg-util.js"></script>
+
+        <style>
+            :root {
+                --primary: #6366f1;
+                --primary-bg: #e0e7ff;
+                --surface: #ffffff;
+                --background: #f8fafc;
+                --text-main: #1e293b;
+                --text-sub: #64748b;
+                --border: #e2e8f0;
+                --success: #10b981;
+            }
+
+            * {
+                box-sizing: border-box;
+                outline: none;
+            }
+
+            body {
+                margin: 0;
+                font-family: "Inter", system-ui, sans-serif;
+                height: 100vh;
+                display: flex;
+                background-color: var(--background);
+                color: var(--text-main);
+                overflow: hidden;
+            }
+
+            /* --- 左侧边栏 --- */
+            .sidebar {
+                width: 320px;
+                background: var(--surface);
+                border-right: 1px solid var(--border);
+                padding: 24px;
+                display: flex;
+                flex-direction: column;
+                gap: 20px;
+                flex-shrink: 0;
+                z-index: 10;
+            }
+
+            .brand {
+                font-size: 1.1rem;
+                font-weight: 700;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding-bottom: 12px;
+                border-bottom: 1px solid var(--border);
+            }
+
+            .upload-area {
+                border: 2px dashed #cbd5e1;
+                border-radius: 12px;
+                padding: 30px 15px;
+                text-align: center;
+                background: #f1f5f9;
+                transition: 0.2s;
+                cursor: pointer;
+            }
+            .upload-area:hover {
+                border-color: var(--primary);
+                background: #eef2ff;
+            }
+            .upload-area.disabled {
+                opacity: 0.6;
+                cursor: not-allowed;
+                filter: grayscale(1);
+            }
+
+            .btn-main {
+                background: var(--primary);
+                color: white;
+                border: none;
+                padding: 12px;
+                border-radius: 8px;
+                font-weight: 600;
+                cursor: pointer;
+                width: 100%;
+                transition: 0.2s;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                gap: 8px;
+            }
+            .btn-main:hover {
+                background: #4f46e5;
+            }
+            .btn-main:disabled {
+                background: #94a3b8;
+                cursor: not-allowed;
+            }
+
+            .terminal {
+                flex: 1;
+                background: #0f172a;
+                color: #22d3ee;
+                padding: 12px;
+                border-radius: 8px;
+                font-family: "JetBrains Mono", monospace;
+                font-size: 11px;
+                line-height: 1.5;
+                overflow-y: auto;
+            }
+
+            /* --- 右侧主内容 --- */
+            .main {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+            }
+
+            .header {
+                padding: 16px 32px;
+                background: rgba(255, 255, 255, 0.85);
+                backdrop-filter: blur(8px);
+                border-bottom: 1px solid var(--border);
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                z-index: 5;
+            }
+
+            /* 新的排序切换控件 (Segmented Control) */
+            .sort-control {
+                display: flex;
+                background: #f1f5f9;
+                padding: 4px;
+                border-radius: 8px;
+                gap: 2px;
+            }
+            .sort-tab {
+                padding: 6px 12px;
+                border-radius: 6px;
+                font-size: 13px;
+                color: var(--text-sub);
+                cursor: pointer;
+                transition: all 0.2s;
+                display: flex;
+                align-items: center;
+                gap: 4px;
+                font-weight: 500;
+            }
+            .sort-tab:hover {
+                color: var(--text-main);
+            }
+            .sort-tab.active {
+                background: white;
+                color: var(--primary);
+                box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            }
+
+            .btn-refresh {
+                margin-left: 12px;
+                padding: 8px;
+                border-radius: 8px;
+                border: 1px solid var(--border);
+                background: white;
+                cursor: pointer;
+                color: var(--text-sub);
+                display: flex;
+                align-items: center;
+                transition: all 0.2s;
+            }
+            .btn-refresh:hover {
+                border-color: var(--primary);
+                color: var(--primary);
+            }
+
+            .list-container {
+                flex: 1;
+                overflow-y: auto;
+                padding: 24px 32px;
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+                gap: 16px;
+                align-content: start;
+            }
+
+            /* --- 卡片样式 --- */
+            .track-card {
+                background: var(--surface);
+                border: 1px solid var(--border);
+                border-radius: 12px;
+                padding: 12px;
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                transition: all 0.2s ease;
+                position: relative;
+            }
+            .track-card:hover {
+                border-color: #c7d2fe;
+                box-shadow:
+                    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+                    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+                transform: translateY(-2px);
+            }
+
+            .track-cover {
+                width: 72px;
+                height: 72px;
+                border-radius: 8px;
+                background: #f1f5f9;
+                object-fit: cover;
+                flex-shrink: 0;
+                border: 1px solid #f1f5f9;
+            }
+            .track-cover.placeholder {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 24px;
+                color: #cbd5e1;
+            }
+
+            .track-info {
+                flex: 1;
+                min-width: 0;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                gap: 6px;
+            }
+
+            .clickable-text {
+                cursor: pointer;
+                transition: color 0.2s;
+                position: relative;
+                width: fit-content;
+                max-width: 100%;
+            }
+            .clickable-text:hover {
+                color: var(--primary);
+                text-decoration-line: underline;
+                text-decoration-thickness: 2px;
+                text-decoration-color: rgba(99, 102, 241, 0.2);
+            }
+            .clickable-text:active {
+                opacity: 0.7;
+            }
+
+            .track-name {
+                font-weight: 600;
+                font-size: 14px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                color: var(--text-main);
+                display: block;
+            }
+
+            .meta-row {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                font-size: 12px;
+                color: var(--text-sub);
+            }
+
+            .pill {
+                background: #f8fafc;
+                border: 1px solid #e2e8f0;
+                padding: 2px 6px;
+                border-radius: 4px;
+                display: flex;
+                align-items: center;
+                gap: 4px;
+            }
+
+            .btn-link {
+                background: white;
+                border: 1px solid var(--border);
+                color: var(--text-sub);
+                width: 32px;
+                height: 32px;
+                border-radius: 8px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                transition: all 0.2s;
+                flex-shrink: 0;
+            }
+            .btn-link:hover {
+                border-color: var(--primary);
+                color: var(--primary);
+                background: #eef2ff;
+            }
+
+            /* --- Toast 顶部提示 --- */
+            .toast-container {
+                position: fixed;
+                /* 改为顶部显示 */
+                top: 24px;
+                left: 50%;
+                /* 初始状态向上隐藏 */
+                transform: translateX(-50%) translateY(-100px);
+                background: #1e293b;
+                color: white;
+                padding: 10px 20px;
+                border-radius: 99px;
+                font-size: 13px;
+                font-weight: 500;
+                box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                opacity: 0;
+                transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+                z-index: 1000;
+                pointer-events: none;
+            }
+            .toast-container.show {
+                /* 显示时回到原位 */
+                transform: translateX(-50%) translateY(0);
+                opacity: 1;
+            }
+            .toast-icon {
+                color: var(--success);
+                display: flex;
+                align-items: center;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="toast" class="toast-container">
+            <div class="toast-icon">
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="3"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                >
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+            </div>
+            <span id="toastMsg">已复制</span>
+        </div>
+
+        <div class="sidebar">
+            <div class="brand">⚡ Batch Uploader</div>
+
+            <div
+                class="upload-area"
+                id="dropZone"
+                onclick="document.getElementById('fileInput').click()"
+            >
+                <input
+                    type="file"
+                    id="fileInput"
+                    accept="audio/*"
+                    multiple
+                    style="display: none"
+                    onchange="handleFileSelect()"
+                />
+                <div style="font-size: 24px; margin-bottom: 8px">📂</div>
+                <div style="font-weight: 500; font-size: 14px">点击或拖拽文件</div>
+                <div style="font-size: 12px; color: var(--text-sub); margin-top: 4px">
+                    支持批量排队处理
+                </div>
+            </div>
+
+            <div
+                id="queueInfo"
+                style="
+                    display: none;
+                    font-size: 12px;
+                    color: var(--text-sub);
+                    background: #f1f5f9;
+                    padding: 10px;
+                    border-radius: 8px;
+                "
+            >
+                待处理: <strong id="queueCount">0</strong> 个文件
+            </div>
+
+            <button id="uploadBtn" class="btn-main" onclick="startBatchUpload()" disabled>
+                🚀 开始处理
+            </button>
+
+            <div id="statusLog" class="terminal">
+                <div>> 等待任务...</div>
+            </div>
+        </div>
+
+        <div class="main">
+            <div class="header">
+                <div style="font-weight: 600">资源列表</div>
+
+                <div style="display: flex; align-items: center">
+                    <div class="sort-control">
+                        <div
+                            id="sortTime"
+                            class="sort-tab active"
+                            onclick="changeSort('time_desc')"
+                        >
+                            🕒 最新
+                        </div>
+                        <div id="sortName" class="sort-tab" onclick="changeSort('name_asc')">
+                            🔤 名称
+                        </div>
+                    </div>
+
+                    <button class="btn-refresh" onclick="fetchList()" title="刷新列表">
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        >
+                            <path d="M23 4v6h-6"></path>
+                            <path d="M1 20v-6h6"></path>
+                            <path
+                                d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"
+                            ></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <div id="musicListContainer" class="list-container"></div>
+        </div>
+
+        <script>
+            const Icons = {
+                link: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`,
+            };
+
+            const { FFmpeg } = FFmpegWASM;
+            const { fetchFile } = FFmpegUtil;
+            let ffmpeg = null;
+            let fileQueue = [];
+            let isProcessing = false;
+            let musicDataList = [];
+
+            // 全局排序状态
+            let currentSortMode = "time_desc";
+
+            const logEl = document.getElementById("statusLog");
+            const uploadBtn = document.getElementById("uploadBtn");
+
+            function log(msg, type = "info") {
+                const div = document.createElement("div");
+                div.textContent = `> ${msg}`;
+                if (type === "success") div.style.color = "var(--success)";
+                if (type === "error") div.style.color = "#ef4444";
+                logEl.appendChild(div);
+                logEl.scrollTop = logEl.scrollHeight;
+            }
+
+            // --- Toast 逻辑 ---
+            let toastTimeout;
+            function showToast(text) {
+                const toast = document.getElementById("toast");
+                const msg = document.getElementById("toastMsg");
+
+                if (text.length > 20) text = text.substring(0, 20) + "...";
+                msg.textContent = `已复制: ${text}`;
+                toast.classList.add("show");
+
+                clearTimeout(toastTimeout);
+                toastTimeout = setTimeout(() => {
+                    toast.classList.remove("show");
+                }, 2000);
+            }
+
+            // --- 排序切换逻辑 ---
+            function changeSort(mode) {
+                if (currentSortMode === mode) return;
+                currentSortMode = mode;
+
+                // 更新 UI 状态
+                document
+                    .getElementById("sortTime")
+                    .classList.toggle("active", mode === "time_desc");
+                document.getElementById("sortName").classList.toggle("active", mode === "name_asc");
+
+                renderList();
+            }
+
+            // --- 工具函数 ---
+            function compressImage(base64Str) {
+                return new Promise((resolve) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement("canvas");
+                        canvas.width = 256;
+                        canvas.height = 256;
+                        const ctx = canvas.getContext("2d");
+                        ctx.drawImage(img, 0, 0, 256, 256);
+                        resolve(canvas.toDataURL("image/jpeg", 0.8));
+                    };
+                    img.onerror = () => resolve(base64Str);
+                    img.src = base64Str;
+                });
+            }
+
+            async function initFFmpeg() {
+                ffmpeg = new FFmpeg();
+                ffmpeg.on("log", ({ message }) => {
+                    if (!message.includes("size=") && !message.includes("time="))
+                        console.log(message);
+                });
+                try {
+                    await ffmpeg.load({
+                        coreURL: "/static/js/ffmpeg-core.js",
+                        wasmURL: "/static/js/ffmpeg-core.wasm",
+                    });
+                    log("系统就绪");
+                } catch (e) {
+                    log("FFmpeg 加载失败", "error");
+                    console.error(e);
+                }
+            }
+
+            function handleFileSelect() {
+                const input = document.getElementById("fileInput");
+                if (input.files.length) {
+                    fileQueue = Array.from(input.files);
+                    document.getElementById("queueCount").textContent = fileQueue.length;
+                    document.getElementById("queueInfo").style.display = "block";
+                    if (ffmpeg && fileQueue.length > 0) uploadBtn.disabled = false;
+                }
+            }
+
+            // --- 批量处理逻辑 ---
+            async function startBatchUpload() {
+                if (isProcessing || fileQueue.length === 0 || !ffmpeg) return;
+                isProcessing = true;
+                uploadBtn.disabled = true;
+                document.getElementById("dropZone").classList.add("disabled");
+
+                log(`开始处理 ${fileQueue.length} 个文件...`);
+
+                for (let i = 0; i < fileQueue.length; i++) {
+                    const file = fileQueue[i];
+                    log(`[${i + 1}/${fileQueue.length}] 处理: ${file.name}`);
+                    try {
+                        await processSingleFile(file);
+                    } catch (error) {
+                        log(`❌ ${file.name} 失败`, "error");
+                    }
+                }
+                log("所有任务完成", "success");
+                isProcessing = false;
+                fileQueue = [];
+                document.getElementById("fileInput").value = "";
+                document.getElementById("queueInfo").style.display = "none";
+                document.getElementById("dropZone").classList.remove("disabled");
+                fetchList();
+            }
+
+            async function processSingleFile(file) {
+                const [coverBase64, duration] = await Promise.all([
+                    getCoverArt(file),
+                    getDuration(file),
+                ]);
+                const inputName = "input_audio";
+                const outputName = "output.mp3";
+                try {
+                    await ffmpeg.deleteFile(inputName);
+                } catch (e) {}
+                try {
+                    await ffmpeg.deleteFile(outputName);
+                } catch (e) {}
+                await ffmpeg.writeFile(inputName, await fetchFile(file));
+                await ffmpeg.exec(["-i", inputName, "-b:a", "192k", outputName]);
+                const data = await ffmpeg.readFile(outputName);
+                const mp3Blob = new Blob([data.buffer], { type: "audio/mp3" });
+                const fullHash = await calculateMD5(mp3Blob);
+                const shortHash = fullHash.substring(0, 16);
+                const finalFilename = `${shortHash}.mp3`;
+                const metadata = {
+                    original_name: file.name,
+                    duration: duration,
+                    cover_base64: coverBase64 || "",
+                };
+                const formData = new FormData();
+                formData.append("audio", mp3Blob, finalFilename);
+                formData.append("metadata", JSON.stringify(metadata));
+                const res = await fetch("/upload", { method: "POST", body: formData });
+                if (!res.ok) throw new Error("Upload failed");
+                await ffmpeg.deleteFile(inputName);
+                await ffmpeg.deleteFile(outputName);
+            }
+
+            // 辅助函数
+            function getCoverArt(file) {
+                return new Promise((resolve) => {
+                    jsmediatags.read(file, {
+                        onSuccess: async function (tag) {
+                            const { picture } = tag.tags;
+                            if (picture) {
+                                let base64String = "";
+                                for (let i = 0; i < picture.data.length; i++) {
+                                    base64String += String.fromCharCode(picture.data[i]);
+                                }
+                                const rawBase64 =
+                                    "data:" +
+                                    picture.format +
+                                    ";base64," +
+                                    window.btoa(base64String);
+                                resolve(await compressImage(rawBase64));
+                            } else {
+                                resolve(null);
+                            }
+                        },
+                        onError: () => resolve(null),
+                    });
+                });
+            }
+            function getDuration(file) {
+                return new Promise((resolve) => {
+                    const audio = new Audio(URL.createObjectURL(file));
+                    audio.addEventListener("loadedmetadata", () =>
+                        resolve(Math.round(audio.duration)),
+                    );
+                    audio.onerror = () => resolve(0);
+                });
+            }
+            function calculateMD5(blob) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.readAsArrayBuffer(blob);
+                    reader.onload = (e) => {
+                        const spark = new SparkMD5.ArrayBuffer();
+                        spark.append(e.target.result);
+                        resolve(spark.end());
+                    };
+                    reader.onerror = reject;
+                });
+            }
+
+            // --- 列表渲染 ---
+            async function fetchList() {
+                try {
+                    const res = await fetch("/api/list");
+                    musicDataList = await res.json();
+                    renderList();
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+
+            function renderList() {
+                const container = document.getElementById("musicListContainer");
+                const list = [...musicDataList];
+
+                // 使用全局变量 currentSortMode
+                list.sort((a, b) => {
+                    if (currentSortMode === "time_desc") return b.upload_time - a.upload_time;
+                    if (currentSortMode === "name_asc")
+                        return a.original_name.localeCompare(b.original_name);
+                    return 0;
+                });
+
+                if (list.length === 0) {
+                    container.innerHTML = `<div style="grid-column:1/-1; text-align:center; color:#94a3b8; padding-top:40px;">暂无文件</div>`;
+                    return;
+                }
+
+                container.innerHTML = list
+                    .map((item) => {
+                        const url = `${window.location.origin}/resources/music/${item.filename}`;
+                        const cover = item.cover_base64
+                            ? `<img src="${item.cover_base64}" class="track-cover">`
+                            : `<div class="track-cover placeholder">🎵</div>`;
+
+                        const min = Math.floor(item.duration / 60);
+                        const sec = (item.duration % 60).toString().padStart(2, "0");
+                        const displayTime = `${min}:${sec}`;
+
+                        return `
+                <div class="track-card">
+                    ${cover}
+                    <div class="track-info">
+                        <div class="clickable-text track-name" 
+                             title="复制: ${item.original_name}" 
+                             onclick="copyText('${item.original_name}', this)">
+                            ${item.original_name}
+                        </div>
+                        
+                        <div class="meta-row">
+                            <div class="clickable-text pill" 
+                                 title="复制时长 (秒): ${item.duration}" 
+                                 onclick="copyText('${item.duration}', this)">
+                                <span>时长 ${displayTime}</span>
+                            </div>
+                            <div class="pill" style="font-family:monospace; color:#94a3b8">
+                                ${item.id.substring(0, 6)}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button class="btn-link" onclick="copyText('${url}', this)" title="复制下载链接">
+                        ${Icons.link}
+                    </button>
+                </div>
+            `;
+                    })
+                    .join("");
+            }
+
+            async function copyText(text, el) {
+                try {
+                    await navigator.clipboard.writeText(text);
+                    showToast(text); // 触发顶部提示
+
+                    if (el.classList.contains("clickable-text")) {
+                        const originalColor = el.style.color;
+                        el.style.color = "var(--success)";
+                        setTimeout(() => {
+                            el.style.color = originalColor;
+                        }, 300);
+                    } else if (el.tagName === "BUTTON") {
+                        const originalColor = el.style.color;
+                        el.style.color = "var(--success)";
+                        el.style.borderColor = "var(--success)";
+                        setTimeout(() => {
+                            el.style.color = "";
+                            el.style.borderColor = "";
+                        }, 300);
+                    }
+                } catch (err) {
+                    console.error("复制失败", err);
+                }
+            }
+
+            initFFmpeg();
+            fetchList();
+        </script>
+    </body>
+</html>
