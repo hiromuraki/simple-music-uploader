@@ -310,10 +310,8 @@
             /* --- Toast 顶部提示 --- */
             .toast-container {
                 position: fixed;
-                /* 改为顶部显示 */
                 top: 24px;
                 left: 50%;
-                /* 初始状态向上隐藏 */
                 transform: translateX(-50%) translateY(-100px);
                 background: #1e293b;
                 color: white;
@@ -331,7 +329,6 @@
                 pointer-events: none;
             }
             .toast-container.show {
-                /* 显示时回到原位 */
                 transform: translateX(-50%) translateY(0);
                 opacity: 1;
             }
@@ -339,6 +336,32 @@
                 color: var(--success);
                 display: flex;
                 align-items: center;
+            }
+
+            /* 定义禁用状态：半透明 + 禁止鼠标事件 */
+            .disabled-zone {
+                opacity: 0.5;
+                pointer-events: none; /* 关键：禁止点击和拖拽 */
+                cursor: not-allowed;
+                filter: grayscale(100%);
+            }
+
+            /* 加载动画 */
+            @keyframes spin {
+                100% {
+                    transform: rotate(360deg);
+                }
+            }
+            .loading-spinner {
+                display: inline-block;
+                width: 16px;
+                height: 16px;
+                border: 2px solid #cbd5e1;
+                border-top-color: var(--primary);
+                border-radius: 50%;
+                animation: spin 0.8s linear infinite;
+                margin-right: 6px;
+                vertical-align: middle;
             }
         </style>
     </head>
@@ -366,7 +389,7 @@
             <div class="brand">⚡ Batch Uploader</div>
 
             <div
-                class="upload-area"
+                class="upload-area disabled-zone"
                 id="dropZone"
                 onclick="document.getElementById('fileInput').click()"
             >
@@ -379,7 +402,10 @@
                     onchange="handleFileSelect()"
                 />
                 <div style="font-size: 24px; margin-bottom: 8px">📂</div>
-                <div style="font-weight: 500; font-size: 14px">点击或拖拽文件</div>
+                <div id="dropZoneText" style="font-weight: 500; font-size: 14px">
+                    <div class="loading-spinner"></div>
+                    系统初始化中...
+                </div>
                 <div style="font-size: 12px; color: var(--text-sub); margin-top: 4px">
                     支持批量排队处理
                 </div>
@@ -400,11 +426,11 @@
             </div>
 
             <button id="uploadBtn" class="btn-main" onclick="startBatchUpload()" disabled>
-                🚀 开始处理
+                🚀 等待组件加载
             </button>
 
             <div id="statusLog" class="terminal">
-                <div>> 等待任务...</div>
+                <div>> 系统启动...</div>
             </div>
         </div>
 
@@ -525,7 +551,12 @@
                 });
             }
 
+            // --- 3. 修改：初始化函数增加 UI 状态控制 ---
             async function initFFmpeg() {
+                const dropZone = document.getElementById("dropZone");
+                const dropText = document.getElementById("dropZoneText");
+                const btn = document.getElementById("uploadBtn");
+
                 ffmpeg = new FFmpeg();
                 ffmpeg.on("log", ({ message }) => {
                     if (!message.includes("size=") && !message.includes("time="))
@@ -536,10 +567,21 @@
                         coreURL: "/static/js/ffmpeg-core.js",
                         wasmURL: "/static/js/ffmpeg-core.wasm",
                     });
-                    log("系统就绪");
+
+                    log("系统就绪 (内核已加载)", "success");
+
+                    // --- 核心加载成功，解锁 UI ---
+                    dropZone.classList.remove("disabled-zone");
+                    dropText.innerHTML = "点击或拖拽文件";
+                    btn.textContent = "🚀 开始处理";
                 } catch (e) {
                     log("FFmpeg 加载失败", "error");
                     console.error(e);
+                    // 失败状态提示
+                    if (dropText) {
+                        dropText.innerHTML =
+                            '<span style="color:#ef4444">❌ 组件加载失败，请刷新</span>';
+                    }
                 }
             }
 
