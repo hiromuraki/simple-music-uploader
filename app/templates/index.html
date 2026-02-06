@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Web Music Archive</title>
+        <title>Web Music Archive (Local)</title>
 
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -33,7 +33,6 @@
         <script src="/static/js/ffmpeg-util.js"></script>
 
         <style>
-            /* 自定义滚动条 */
             ::-webkit-scrollbar {
                 width: 6px;
                 height: 6px;
@@ -49,7 +48,6 @@
                 background: #94a3b8;
             }
 
-            /* Toast 动画 */
             .toast-enter {
                 transform: translateX(-50%) translateY(-100%);
                 opacity: 0;
@@ -215,6 +213,8 @@
         <script>
             const Icons = {
                 link: `<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`,
+                play: `<svg class="w-8 h-8 text-white fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`,
+                stop: `<svg class="w-8 h-8 text-white fill-current" viewBox="0 0 24 24"><path d="M6 6h12v12H6z"/></svg>`,
             };
         </script>
 
@@ -227,6 +227,11 @@
             let musicDataList = [];
             let currentSortMode = "time_desc";
 
+            // --- 全局播放器状态 ---
+            let currentAudio = null; // 当前 Audio 对象
+            let playingId = null; // 当前播放的歌曲 ID
+
+            // 元素引用
             const logEl = document.getElementById("statusLog");
             const uploadBtn = document.getElementById("uploadBtn");
             const dropZone = document.getElementById("dropZone");
@@ -243,6 +248,50 @@
                 logEl.scrollTop = logEl.scrollHeight;
             }
 
+            // --- 播放/停止控制逻辑 ---
+            function togglePlay(url, id) {
+                // 1. 如果点击的是当前正在播放的歌曲 -> 停止
+                if (playingId === id) {
+                    if (currentAudio) {
+                        currentAudio.pause();
+                        currentAudio = null; // 销毁对象，下次从头播放
+                    }
+                    playingId = null;
+                    renderList(); // 更新 UI
+                    return;
+                }
+
+                // 2. 如果已经在播放其他歌曲 -> 先停止上一首
+                if (currentAudio) {
+                    currentAudio.pause();
+                    currentAudio = null;
+                }
+
+                // 3. 播放新歌
+                playingId = id;
+                currentAudio = new Audio(url);
+
+                // 播放结束事件
+                currentAudio.onended = () => {
+                    playingId = null;
+                    renderList();
+                };
+
+                currentAudio.onerror = () => {
+                    log("播放失败", "error");
+                    playingId = null;
+                    renderList();
+                };
+
+                currentAudio.play().catch((e) => {
+                    console.error("Auto-play prevented", e);
+                    playingId = null;
+                    renderList();
+                });
+
+                renderList(); // 更新 UI 显示停止图标
+            }
+
             // --- 1. 初始化 FFmpeg ---
             async function initFFmpeg() {
                 ffmpeg = new FFmpeg();
@@ -252,7 +301,6 @@
                 });
 
                 try {
-                    // 本地加载
                     await ffmpeg.load({
                         coreURL: "/static/js/ffmpeg-core.js",
                         wasmURL: "/static/js/ffmpeg-core.wasm",
@@ -260,7 +308,6 @@
 
                     log("本地 FFmpeg 内核加载完毕", "success");
 
-                    // 解锁界面
                     dropZone.classList.remove(
                         "opacity-60",
                         "pointer-events-none",
@@ -351,7 +398,7 @@
                 const finalFilename = `${shortHash}.mp3`;
 
                 const metadata = {
-                    original_name: file.name,
+                    original_name: file.name.replace(/\.[^/.]+$/, ""), // 去掉文件名后缀
                     duration: duration,
                     cover_base64: coverBase64 || "",
                 };
@@ -367,7 +414,6 @@
                 await ffmpeg.deleteFile(outputName);
             }
 
-            // --- 辅助工具 ---
             function getCoverArt(file) {
                 return new Promise((resolve) => {
                     jsmediatags.read(file, {
@@ -471,15 +517,38 @@
                 container.innerHTML = list
                     .map((item) => {
                         const url = `${window.location.origin}/resources/music/${item.filename}`;
-                        const cover = item.cover_base64
-                            ? `<img src="${item.cover_base64}" class="w-[72px] h-[72px] rounded-lg bg-slate-200 object-cover shrink-0 border border-slate-100">`
-                            : `<div class="w-[72px] h-[72px] rounded-lg bg-slate-100 flex items-center justify-center text-2xl text-slate-300 shrink-0 border border-slate-100">🎵</div>`;
+                        // 检查当前 item 是否正在播放
+                        const isPlaying = item.id === playingId;
+
+                        // 封面图逻辑
+                        const coverImg = item.cover_base64
+                            ? `<img src="${item.cover_base64}" class="w-full h-full object-cover">`
+                            : `<div class="w-full h-full flex items-center justify-center text-2xl text-slate-300">🎵</div>`;
+
+                        // 遮罩层逻辑：
+                        // 1. group-hover:opacity-100 (鼠标悬停显示)
+                        // 2. opacity-100 (如果是播放状态，强制显示)
+                        // 3. opacity-0 (默认隐藏)
+                        const overlayClass = isPlaying
+                            ? "opacity-100"
+                            : "opacity-0 group-hover:opacity-100";
+                        const playIcon = isPlaying ? Icons.stop : Icons.play;
+
+                        const cover = `
+                    <div class="relative w-[72px] h-[72px] rounded-lg bg-slate-100 overflow-hidden shrink-0 border border-slate-100 group cursor-pointer"
+                         onclick="togglePlay('${url}', '${item.id}')">
+                        ${coverImg}
+                        <div class="absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity duration-200 ${overlayClass}">
+                            ${playIcon}
+                        </div>
+                    </div>
+                `;
 
                         const min = Math.floor(item.duration / 60);
                         const sec = (item.duration % 60).toString().padStart(2, "0");
 
                         return `
-                    <div class="group relative bg-white border border-slate-200 rounded-xl p-3 flex items-center gap-3 transition-all hover:border-indigo-200 hover:shadow-md hover:-translate-y-0.5">
+                    <div class="group/card relative bg-white border border-slate-200 rounded-xl p-3 flex items-center gap-3 transition-all hover:border-indigo-200 hover:shadow-md hover:-translate-y-0.5 ${isPlaying ? "border-indigo-300 ring-1 ring-indigo-200 bg-indigo-50/30" : ""}">
                         ${cover}
                         <div class="flex-1 min-w-0 flex flex-col justify-center gap-1.5">
                             <div class="font-semibold text-sm text-slate-800 truncate cursor-pointer hover:text-primary hover:underline decoration-indigo-200 decoration-2"
