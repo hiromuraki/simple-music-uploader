@@ -11,3 +11,8 @@ dependencies = [
     "python-multipart>=0.0.22",
     "uvicorn>=0.40.0",
 ]
+
+[[tool.uv.index]]
+name = "tuna"
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+default = true
